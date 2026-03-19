@@ -1,0 +1,8 @@
+visual-discovery-frontend/node_modules/
+visual-discovery-frontend/.next/
+visual-discovery-backend/__pycache__/
+visual-discovery-backend/*.pyc
+visual-discovery-backend/fashion-dataset/
+visual-discovery-backend/.env
+*.pt
+*.log
