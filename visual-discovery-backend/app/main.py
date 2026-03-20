@@ -160,11 +160,20 @@ async def styleboard(product_id: str):
                 ))
 
         # Step 3 — fetch swaps (same category, different product)
-        same_cat_items = wv.get_by_category(anchor_category, limit=10)
+        from app.services.style_service import get_specific_category
+        anchor_specific = get_specific_category(anchor_raw)
+        same_cat_items = wv.get_by_category(anchor_category, limit=50)
         swap_candidates = [
             p for p in same_cat_items
             if str(p.get("product_id", "")) != product_id
+            and get_specific_category(p) == anchor_specific
         ]
+        # Fallback if no specific matches found
+        if not swap_candidates:
+            swap_candidates = [
+                p for p in same_cat_items
+                if str(p.get("product_id", "")) != product_id
+            ]
         swap_candidates.sort(
             key=lambda p: score_swap(p, anchor_raw), reverse=True
         )

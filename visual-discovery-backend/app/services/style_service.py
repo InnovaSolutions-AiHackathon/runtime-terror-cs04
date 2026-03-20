@@ -64,3 +64,26 @@ def get_swap_badge(candidate: dict, anchor: dict) -> str:
 
 def get_complement_reason(complement: dict, anchor: dict) -> str:
     return f"Pairs well with {anchor.get('category', 'your item').lower()}"
+
+def get_specific_category(product: dict) -> str:
+    """Extract specific category from product name."""
+    name = product.get("name", "").lower()
+    if any(w in name for w in ["belt", "belts"]):
+        return "belt"
+    if any(w in name for w in ["bag", "handbag", "tote", "clutch", "sling"]):
+        return "bag"
+    if any(w in name for w in ["watch", "watches"]):
+        return "watch"
+    if any(w in name for w in ["scarf", "scarves"]):
+        return "scarf"
+    if any(w in name for w in ["wallet", "wallets"]):
+        return "wallet"
+    if any(w in name for w in ["shoe", "shoes", "boot", "boots", "sandal", "sandals", "sneaker", "sneakers"]):
+        return "shoes"
+    if any(w in name for w in ["shirt", "shirts", "tshirt", "t-shirt"]):
+        return "shirt"
+    if any(w in name for w in ["jeans", "trouser", "trousers", "pant", "pants", "chino"]):
+        return "bottomwear"
+    if any(w in name for w in ["jacket", "coat", "blazer"]):
+        return "outerwear"
+    return product.get("category", "Accessories").lower()
