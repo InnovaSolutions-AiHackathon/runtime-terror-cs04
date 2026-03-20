@@ -1,12 +1,33 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MOCK_PRODUCTS, SearchResult } from "@/lib/mockData";
 import { StarRating, Badge, BackButton, Logo } from "./shared";
-import Footer from "./Footer";
+import { addToWishlist, removeFromWishlist, isInWishlist } from "@/lib/wishlist";
 
 type Product = typeof MOCK_PRODUCTS[0];
 
 function ProductCard({ p, selected, onSelect }: { p: Product; selected: boolean; onSelect: (p: Product) => void }) {
+  const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    setWishlisted(isInWishlist(p.id));
+  }, [p.id]);
+
+  const toggleWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (wishlisted) {
+      removeFromWishlist(p.id);
+    } else {
+      addToWishlist({
+        id: p.id, name: p.name, brand: p.brand,
+        price: p.price, rating: p.rating,
+        image_url: p.image_url, category: p.category,
+        match_score: p.match_score, promo: p.promo,
+        addedAt: new Date().toISOString(),
+      });
+    }
+    setWishlisted(!wishlisted);
+  };
   return (
     <div onClick={() => onSelect(p)} style={{
       background: "#f9fafb", borderRadius: 12, padding: 12, cursor: "pointer",
@@ -28,6 +49,21 @@ function ProductCard({ p, selected, onSelect }: { p: Product; selected: boolean;
             SALE
           </span>
         )}
+        {/* Wishlist heart button */}
+          <button
+            onClick={toggleWishlist}
+            style={{
+              position: "absolute", bottom: 6, right: 6,
+              width: 26, height: 26, borderRadius: "50%",
+              border: "none", cursor: "pointer",
+              background: wishlisted ? "#e11d48" : "rgba(255,255,255,0.9)",
+              color: wishlisted ? "#fff" : "#e11d48",
+              fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            ♥
+        </button>
       </div>
       <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>{p.brand}</p>
       <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937", marginBottom: 6, lineHeight: 1.3 }}>{p.name}</p>
@@ -120,7 +156,6 @@ export default function ResultsScreen({
           </button>
         </div>
       )}
-      <Footer />
     </div>
   );
 }

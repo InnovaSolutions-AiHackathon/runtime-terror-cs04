@@ -2,7 +2,7 @@
 
 > **Team Runtime Terror** · Hackathon 2026
 
-Transform the retail journey from keyword search to visual discovery. Upload any fashion photo and our AI pipeline finds visually similar products, builds a complete outfit, and suggests smarter alternatives.
+Transform the retail journey from keyword search to visual discovery. Upload any fashion photo, describe what you want in words, and our AI pipeline finds visually similar products, builds a complete outfit, and suggests smarter alternatives.
 
 ---
 
@@ -10,7 +10,7 @@ Transform the retail journey from keyword search to visual discovery. Upload any
 
 Traditional ecommerce search is **keyword-based** — users must describe what they want in words. This creates a "vocabulary gap" where users see a product they love but can't describe it precisely enough to find it.
 
-**Visual Discovery solves this** — users simply show the app what they want.
+**Visual Discovery solves this** — users simply show or describe what they want.
 
 ---
 
@@ -18,7 +18,9 @@ Traditional ecommerce search is **keyword-based** — users must describe what t
 
 - 📸 **Photo Upload / Camera / URL** — search with any image
 - 💬 **Text Search** — describe what you want in words (e.g. "brown leather belt", "green salwar")
-- 🎯 **Object Detection** — identifies multiple items in one photo (bag + shoes + watch)
+- 🕐 **Search History** — last 5 searches saved, re-search with one tap
+- ❤️ **Wishlist** — save favourite products, view and manage anytime
+- 🎯 **Object Detection** — identifies multiple items in one photo
 - 🔍 **Visual Search** — finds products by visual similarity, not keywords
 - 🧩 **Complete the Look** — suggests complementary items to build a full outfit
 - 🔄 **Smart Swaps** — finds better-priced or higher-rated alternatives with same style
@@ -57,6 +59,7 @@ Results displayed in UI
 | Backend | FastAPI, Python 3.11 |
 | Object Detection | YOLOv8 nano (Ultralytics) |
 | Image Embedding | CLIP ViT-B/32 (OpenCLIP) |
+| Text Embedding | CLIP ViT-B/32 (multimodal) |
 | Vector Database | Weaviate 1.25 |
 | Cache | Redis 7 |
 | Dataset | Kaggle Fashion Product Images (44k) |
@@ -165,6 +168,12 @@ API docs available at: `http://localhost:8000/docs`
 3. **Weaviate** finds the nearest neighbor vectors using HNSW algorithm
 4. Results ranked by cosine similarity score
 
+### Text Search Pipeline
+1. User types a description (e.g. "brown leather belt")
+2. **CLIP** converts the text into a 512-dimensional vector
+3. **Weaviate** finds products whose image vectors are closest to the text vector
+4. Returns visually matching products — no keywords needed
+
 ### Smart Swap Scoring
 ```
 score = (price_saving × 0.4) + (rating/5.0 × 0.4) + (promo_active × 0.2)
@@ -175,6 +184,10 @@ Category-based complement mapping ensures relevant outfit suggestions:
 - Apparel → Footwear + Accessories
 - Footwear → Bottomwear + Accessories
 - Accessories → Apparel + Footwear
+
+### Wishlist & Search History
+- Wishlist stored in browser localStorage — persists across sessions
+- Search history saves last 5 searches (text, image, URL) for quick re-search
 
 ---
 

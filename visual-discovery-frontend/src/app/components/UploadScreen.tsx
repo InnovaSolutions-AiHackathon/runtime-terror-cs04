@@ -1,7 +1,8 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Logo } from "./shared";
 import { searchByImage, searchByUrl, SearchResult } from "@/lib/mockData";
+import { getSearchHistory, addToHistory, SearchHistoryItem } from "@/lib/wishlist";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -15,6 +16,11 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
+
+  useEffect(() => {
+    setHistory(getSearchHistory());
+  }, []);
 
   const handleFile = (f: File | undefined) => {
     if (!f || !f.type.startsWith("image/")) return;
@@ -51,6 +57,15 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
         onSearch(undefined);
         return;
       }
+      // Save to history
+      if (mode === "text" && textQuery) {
+        addToHistory({ type: "text", query: textQuery });
+      } else if (mode === "url" && url) {
+        addToHistory({ type: "url", query: url });
+      } else if (file && preview) {
+        addToHistory({ type: "image", query: file.name, preview });
+      }
+      setHistory(getSearchHistory());
       onSearch(result);
     } catch (err: any) {
       setError(err.message || "Search failed. Make sure backend is running on port 8000.");
@@ -204,6 +219,57 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
         }}>
           Skip — use demo data
         </button>
+        {history.length > 0 && (
+          <div style={{ width: "100%", maxWidth: 500, marginTop: 24 }}>
+            <p style={{ fontSize: 12, fontWeight: 500, color: "#9ca3af", marginBottom: 10 }}>
+              Recent searches
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {history.map(h => (
+                <button
+                  key={h.id}
+                  onClick={() => {
+                    if (h.type === "text") { setMode("text"); setTextQuery(h.query); }
+                    else if (h.type === "url") { setMode("url"); setUrl(h.query); }
+                    else if (h.preview) { setMode("upload"); setPreview(h.preview); }
+                  }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 12px", borderRadius: 10,
+                    border: "1px solid #f3f4f6", background: "#f9fafb",
+                    cursor: "pointer", textAlign: "left",
+                  }}
+                >
+                  {/* Icon */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    background: "#ede9fe", display: "flex", alignItems: "center",
+                    justifyContent: "center", overflow: "hidden",
+                  }}>
+                    {h.type === "image" && h.preview ? (
+                      <img src={h.preview} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontSize: 16 }}>
+                        {h.type === "text" ? "💬" : "🔗"}
+                      </span>
+                    )}
+                  </div>
+                  {/* Text */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "#374151", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {h.query}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>
+                      {h.type === "text" ? "Text search" : h.type === "url" ? "URL search" : "Image search"}
+                      {" · "}{new Date(h.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>→</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
