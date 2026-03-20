@@ -1,9 +1,7 @@
 "use client";
 import { useState, useCallback, useRef } from "react";
 import { Logo } from "./shared";
-import { searchByImage, SearchResult, searchByUrl } from "@/lib/mockData";
-import Footer from "./Footer";
-
+import { searchByImage, SearchResult } from "@/lib/mockData";
 
 export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchResult) => void }) {
   const [dragging,  setDragging]  = useState(false);
@@ -29,28 +27,36 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
     handleFile(e.dataTransfer.files[0]);
   }, []);
 
+  const handleSearch = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      let fileToSearch: File | null = file;
 
-const handleSearch = async () => {
-  setError(null);
-  setLoading(true);
-  try {
-    let result;
-    if (mode === "url" && url) {
-      result = await searchByUrl(url);
-    } else if (file) {
-      result = await searchByImage(file);
-    } else {
-      onSearch(undefined);
-      return;
+      // If URL mode — fetch the image and convert to File
+      if (mode === "url" && url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Could not fetch image from URL");
+        const blob = await res.blob();
+        if (!blob.type.startsWith("image/")) throw new Error("URL does not point to a valid image");
+        fileToSearch = new File([blob], "url-image.jpg", { type: blob.type });
+        // Show preview
+        setPreview(URL.createObjectURL(blob));
+      }
+
+      if (fileToSearch) {
+        const result = await searchByImage(fileToSearch);
+        onSearch(result);
+      } else {
+        onSearch(undefined);
+      }
+    } catch (err: any) {
+      setError(err.message || "Search failed. Check the URL or make sure backend is running.");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    onSearch(result);
-  } catch (err: any) {
-    setError(err.message || "Search failed. Make sure backend is running on port 8000.");
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const canSearch = Boolean(preview || url);
   return (
@@ -158,7 +164,6 @@ const handleSearch = async () => {
           Skip — use demo data
         </button>
       </main>
-      <Footer />
     </div>
   );
 }

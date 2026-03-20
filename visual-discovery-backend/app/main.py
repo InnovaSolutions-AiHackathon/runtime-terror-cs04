@@ -366,3 +366,40 @@ async def search_by_url(payload: dict):
         products=products,
         confidence=round(crops[0][1] * 100, 1),
     )
+
+@app.post("/search-by-text")
+async def search_by_text(payload: dict):
+    query = payload.get("query", "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query text required")
+
+    clip     = get_clip_service()
+    weaviate = get_weaviate_service()
+
+    # Convert text to vector using CLIP
+    embedding = clip.embed_text(query)
+
+    # Search Weaviate with text vector
+    raw_products = weaviate.search(embedding, limit=6)
+
+    products = [
+        Product(
+            id=str(p.get("id", p.get("product_id", ""))),
+            name=p.get("name", ""),
+            brand=p.get("brand", ""),
+            price=float(p.get("price", 0)),
+            rating=float(p.get("rating", 0)),
+            reviews=int(p.get("reviews", 0)),
+            category=p.get("category", ""),
+            image_url=p.get("image_url", ""),
+            match_score=float(p.get("match_score", 0)),
+            promo=bool(p.get("promo", False)),
+        )
+        for p in raw_products
+    ]
+
+    return SearchResponse(
+        detected_objects=[DetectedObject(label=query, confidence=1.0, bbox=[0,0,0,0])],
+        products=products,
+        confidence=100.0,
+    )
