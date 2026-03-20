@@ -1,6 +1,6 @@
 # 🔍 Visual Discovery — AI-Powered Fashion Search
 
-> **Team Runtime Terror** · Hackathon 2025
+> **Team Runtime Terror** · Hackathon 2026
 
 Transform the retail journey from keyword search to visual discovery. Upload any fashion photo and our AI pipeline finds visually similar products, builds a complete outfit, and suggests smarter alternatives.
 

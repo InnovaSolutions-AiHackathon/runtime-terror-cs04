@@ -1,6 +1,6 @@
 # 🔍 Visual Discovery — Frontend
 
-> **Team Runtime Terror** · Hackathon 2025
+> **Team Runtime Terror** · Hackathon 2026
 
 Next.js frontend for the Visual Discovery AI-powered fashion search platform.
 
