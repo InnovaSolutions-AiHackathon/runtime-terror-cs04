@@ -1,0 +1,92 @@
+{
+  "products": [
+    {
+      "id": "p001",
+      "name": "Slim Fit Chino Trousers",
+      "brand": "Uniqlo",
+      "price": 49.99,
+      "rating": 4.5,
+      "reviews": 1280,
+      "category": "Bottoms",
+      "image_url": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&q=80",
+      "promo": false
+    },
+    {
+      "id": "p002",
+      "name": "Leather Chelsea Boots",
+      "brand": "Thursday Boot Co.",
+      "price": 199.99,
+      "rating": 4.8,
+      "reviews": 890,
+      "category": "Footwear",
+      "image_url": "https://images.unsplash.com/photo-1638247025967-b4e38f787b76?w=400&q=80",
+      "promo": true
+    },
+    {
+      "id": "p003",
+      "name": "Merino Crew Neck Sweater",
+      "brand": "Everlane",
+      "price": 98.00,
+      "rating": 4.6,
+      "reviews": 543,
+      "category": "Tops",
+      "image_url": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&q=80",
+      "promo": false
+    },
+    {
+      "id": "p004",
+      "name": "Canvas Tote Bag",
+      "brand": "Baggu",
+      "price": 38.00,
+      "rating": 4.4,
+      "reviews": 2100,
+      "category": "Accessories",
+      "image_url": "https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=400&q=80",
+      "promo": true
+    },
+    {
+      "id": "p005",
+      "name": "Slim Tapered Jeans",
+      "brand": "Levi's",
+      "price": 79.99,
+      "rating": 4.3,
+      "reviews": 3400,
+      "category": "Bottoms",
+      "image_url": "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&q=80",
+      "promo": false
+    },
+    {
+      "id": "p006",
+      "name": "Minimalist Watch",
+      "brand": "Skagen",
+      "price": 145.00,
+      "rating": 4.7,
+      "reviews": 670,
+      "category": "Accessories",
+      "image_url": "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400&q=80",
+      "promo": false
+    },
+    {
+      "id": "p007",
+      "name": "Oxford Button-Down Shirt",
+      "brand": "Ralph Lauren",
+      "price": 89.00,
+      "rating": 4.5,
+      "reviews": 980,
+      "category": "Tops",
+      "image_url": "https://images.unsplash.com/photo-1603252109303-2751441dd157?w=400&q=80",
+      "promo": false
+    },
+    {
+      "id": "p008",
+      "name": "Leather Belt Brown",
+      "brand": "Fossil",
+      "price": 45.00,
+      "rating": 4.3,
+      "reviews": 560,
+      "category": "Accessories",
+      "image_url": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80",
+      "promo": false
+    }
+  ]
+}

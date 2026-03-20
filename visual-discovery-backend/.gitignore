@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+
+# ML Models (too large for GitHub)
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# Dataset (too large for GitHub)
+fashion-dataset/
+sample_catalog/products_full.json
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
