@@ -1,14 +1,17 @@
 "use client";
 import { useState, useCallback, useRef } from "react";
 import { Logo } from "./shared";
-import { searchByImage, SearchResult } from "@/lib/mockData";
+import { searchByImage, searchByUrl, SearchResult } from "@/lib/mockData";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchResult) => void }) {
   const [dragging,  setDragging]  = useState(false);
   const [preview,   setPreview]   = useState<string | null>(null);
   const [file,      setFile]      = useState<File | null>(null);
   const [url,       setUrl]       = useState("");
-  const [mode,      setMode]      = useState<"upload" | "url">("upload");
+  const [textQuery, setTextQuery] = useState("");
+  const [mode,      setMode]      = useState<"upload" | "url" | "text">("upload");
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,40 +34,43 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
     setError(null);
     setLoading(true);
     try {
-      let fileToSearch: File | null = file;
-
-      // If URL mode — fetch the image and convert to File
-      if (mode === "url" && url) {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Could not fetch image from URL");
-        const blob = await res.blob();
-        if (!blob.type.startsWith("image/")) throw new Error("URL does not point to a valid image");
-        fileToSearch = new File([blob], "url-image.jpg", { type: blob.type });
-        // Show preview
-        setPreview(URL.createObjectURL(blob));
-      }
-
-      if (fileToSearch) {
-        const result = await searchByImage(fileToSearch);
-        onSearch(result);
+      let result;
+      if (mode === "text" && textQuery) {
+        const res = await fetch(`${API_URL}/search-by-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: textQuery }),
+        });
+        if (!res.ok) throw new Error("Text search failed");
+        result = await res.json();
+      } else if (mode === "url" && url) {
+        result = await searchByUrl(url);
+      } else if (file) {
+        result = await searchByImage(file);
       } else {
         onSearch(undefined);
+        return;
       }
+      onSearch(result);
     } catch (err: any) {
-      setError(err.message || "Search failed. Check the URL or make sure backend is running.");
-      console.error(err);
+      setError(err.message || "Search failed. Make sure backend is running on port 8000.");
     } finally {
       setLoading(false);
     }
   };
 
-  const canSearch = Boolean(preview || url);
+  const canSearch = Boolean(
+    (mode === "upload" && (preview || file)) ||
+    (mode === "url" && url) ||
+    (mode === "text" && textQuery.trim())
+  );
+
   return (
     <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <header style={{ padding: "16px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Logo />
-        <span style={{ fontSize: 12, color: "#9ca3af" }}>Find products by photo</span>
+        <span style={{ fontSize: 12, color: "#9ca3af" }}>Find products by photo or text</span>
       </header>
 
       {/* Body */}
@@ -73,26 +79,26 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
           See it. Find it. Style it.
         </h1>
         <p style={{ fontSize: 15, color: "#6b7280", textAlign: "center", maxWidth: 440, marginBottom: 36, lineHeight: 1.6 }}>
-          Upload a photo or screenshot — we'll identify every product and build a complete look around it.
+          Upload a photo, paste a URL, or describe what you are looking for in words.
         </p>
 
-        {/* Mode toggle */}
+        {/* Mode toggle — 3 tabs */}
         <div style={{ display: "flex", gap: 4, background: "#f3f4f6", borderRadius: 12, padding: 4, marginBottom: 24 }}>
-          {(["upload", "url"] as const).map(m => (
+          {(["upload", "url", "text"] as const).map(m => (
             <button key={m} onClick={() => setMode(m)} style={{
-              padding: "8px 20px", borderRadius: 8, border: "none", cursor: "pointer",
+              padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer",
               fontSize: 13, fontWeight: 500,
               background: mode === m ? "#fff" : "transparent",
               color: mode === m ? "#111827" : "#6b7280",
               boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
             }}>
-              {m === "upload" ? "📁 Upload / Camera" : "🔗 Paste URL"}
+              {m === "upload" ? "📁 Upload" : m === "url" ? "🔗 URL" : "💬 Describe"}
             </button>
           ))}
         </div>
 
-        {/* Drop zone */}
-        {mode === "upload" ? (
+        {/* Upload zone */}
+        {mode === "upload" && (
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -121,22 +127,57 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
               </>
             )}
           </div>
-        ) : (
+        )}
+
+        {/* URL input */}
+        {mode === "url" && (
           <input
             value={url} onChange={e => setUrl(e.target.value)}
             placeholder="https://example.com/product-image.jpg"
             style={{
               width: "100%", maxWidth: 500, padding: "14px 16px",
               borderRadius: 10, border: "1.5px solid #d1d5db",
-              fontSize: 14, background: "#f9fafb", color: "#111827", outline: "none",
+              fontSize: 14, background: "#f9fafb", color: "#111827",
+              outline: "none", boxSizing: "border-box" as const,
             }}
           />
         )}
 
-        {/* Error message */}
+        {/* Text search */}
+        {mode === "text" && (
+          <div style={{ width: "100%", maxWidth: 500 }}>
+            <input
+              value={textQuery}
+              onChange={e => setTextQuery(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && canSearch && handleSearch()}
+              placeholder="e.g. brown leather belt, green salwar, red heels..."
+              style={{
+                width: "100%", padding: "14px 16px",
+                borderRadius: 10, border: "1.5px solid #d1d5db",
+                fontSize: 14, background: "#f9fafb", color: "#111827",
+                outline: "none", boxSizing: "border-box" as const,
+              }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              {["brown leather belt", "red handbag", "blue denim jeans", "green salwar", "white sneakers"].map(s => (
+                <button key={s} onClick={() => setTextQuery(s)} style={{
+                  padding: "6px 12px", borderRadius: 99, border: "1px solid #e5e7eb",
+                  fontSize: 12, color: "#6b7280", background: "#f9fafb", cursor: "pointer",
+                }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 10 }}>
+              Powered by CLIP — describe color, type, material or style
+            </p>
+          </div>
+        )}
+
+        {/* Error */}
         {error && (
           <div style={{ marginTop: 16, padding: "10px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#dc2626", fontSize: 13, maxWidth: 500, width: "100%" }}>
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
@@ -154,7 +195,7 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
             transition: "background 0.2s",
           }}
         >
-          {loading ? "Searching..." : "Search by Photo →"}
+          {loading ? "Searching..." : mode === "text" ? "Search by Description →" : "Search by Photo →"}
         </button>
 
         <button onClick={() => onSearch(undefined)} style={{

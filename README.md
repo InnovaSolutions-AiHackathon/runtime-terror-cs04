@@ -17,6 +17,7 @@ Traditional ecommerce search is **keyword-based** — users must describe what t
 ## ✨ Features
 
 - 📸 **Photo Upload / Camera / URL** — search with any image
+- 💬 **Text Search** — describe what you want in words (e.g. "brown leather belt", "green salwar")
 - 🎯 **Object Detection** — identifies multiple items in one photo (bag + shoes + watch)
 - 🔍 **Visual Search** — finds products by visual similarity, not keywords
 - 🧩 **Complete the Look** — suggests complementary items to build a full outfit
@@ -84,12 +85,19 @@ pip install kaggle
 kaggle datasets download -d paramaggarwal/fashion-product-images-small
 ```
 
-### 3. Start all services
+### 3. Start backend services
 ```bash
-docker compose up --build
+docker compose up -d
 ```
 
-### 4. Ingest the catalog (first time only)
+### 4. Start frontend
+```bash
+cd visual-discovery-frontend
+npm install
+npm run dev
+```
+
+### 5. Ingest the catalog (first time only)
 ```bash
 cd visual-discovery-backend
 python ingest_kaggle.py --zip "/path/to/fashion-product-images-small.zip"
@@ -140,6 +148,7 @@ visual-discovery-backend/          ← FastAPI Backend
 | GET | `/health` | Health check |
 | POST | `/search` | Visual search by image upload |
 | POST | `/search-by-url` | Visual search by image URL |
+| POST | `/search-by-text` | Search by text description (CLIP multimodal) |
 | GET | `/styleboard/{id}` | Get complements + smart swaps |
 | POST | `/catalog/ingest` | Ingest product catalog |
 | DELETE | `/catalog/clear` | Clear catalog |
