@@ -8,7 +8,7 @@ COLLECTION_NAME = "Product"
 class WeaviateService:
     def __init__(self, url: str = "http://localhost:8080"):
         print(f"Connecting to Weaviate at {url}...")
-        host = os.getenv("WEAVIATE_HOST", "localhost")
+        host = os.getenv("WEAVIATE_HOST", "weaviate")
         port = int(os.getenv("WEAVIATE_PORT", "8080"))
         self.client = weaviate.connect_to_local(
             host=host, port=port
@@ -32,6 +32,7 @@ class WeaviateService:
                     wvc.config.Property(name="category",    data_type=wvc.config.DataType.TEXT),
                     wvc.config.Property(name="image_url",   data_type=wvc.config.DataType.TEXT),
                     wvc.config.Property(name="promo",       data_type=wvc.config.DataType.BOOL),
+                    wvc.config.Property(name="gender",      data_type=wvc.config.DataType.TEXT),  # NEW
                 ],
             )
             print(f"Created Weaviate collection: {COLLECTION_NAME}")
@@ -50,16 +51,27 @@ class WeaviateService:
                 "category":   product["category"],
                 "image_url":  product.get("image_url", ""),
                 "promo":      bool(product.get("promo", False)),
+                "gender":     product.get("gender", "Unisex"),  # NEW
             },
             vector=embedding,
         )
 
-    def search(self, embedding: List[float], limit: int = 6) -> List[dict]:
-        """Find most visually similar products by vector."""
+    def search(self, embedding: List[float], limit: int = 6, gender: Optional[str] = None) -> List[dict]:
+        """Find most visually similar products by vector, optionally filtered by gender."""
         collection = self.client.collections.get(COLLECTION_NAME)
+
+        # Build gender filter
+        filters = None
+        if gender and gender.lower() not in ("unisex", ""):
+            filters = (
+                wvc.query.Filter.by_property("gender").equal(gender) |
+                wvc.query.Filter.by_property("gender").equal("Unisex")
+            )
+
         results = collection.query.near_vector(
             near_vector=embedding,
             limit=limit,
+            filters=filters,
             return_metadata=wvc.query.MetadataQuery(certainty=True),
         )
         products = []
@@ -70,21 +82,37 @@ class WeaviateService:
             products.append(p)
         return products
 
-    def get_by_category(self, category: str, limit: int = 10, offset: int = 0) -> List[dict]:
-        """Fetch products by category with random offset for variety."""
+    def get_by_category(self, category: str, limit: int = 10, offset: int = 0, gender: Optional[str] = None) -> List[dict]:
         import random
         collection = self.client.collections.get(COLLECTION_NAME)
-        # Use a random offset so we don't always get the same products
+
+        # Base filter — category match
+        cat_filter = wvc.query.Filter.by_property("category").equal(category)
+
+        # Always exclude kids
+        exclude_kids = (
+            wvc.query.Filter.by_property("gender").not_equal("Boys") &
+            wvc.query.Filter.by_property("gender").not_equal("Girls")
+        )
+
+        if gender and gender.lower() not in ("unisex", ""):
+            gender_filter = (
+                wvc.query.Filter.by_property("gender").equal(gender) |
+                wvc.query.Filter.by_property("gender").equal("Unisex")
+            )
+            filters = cat_filter & gender_filter & exclude_kids
+        else:
+            filters = cat_filter & exclude_kids
+
         random_offset = random.randint(0, 50)
         results = collection.query.fetch_objects(
-            filters=wvc.query.Filter.by_property("category").equal(category),
+            filters=filters,
             limit=limit,
             offset=random_offset,
         )
-        # Fallback to offset 0 if random offset returns nothing
         if not results.objects:
             results = collection.query.fetch_objects(
-                filters=wvc.query.Filter.by_property("category").equal(category),
+                filters=filters,
                 limit=limit,
             )
         return [obj.properties for obj in results.objects]

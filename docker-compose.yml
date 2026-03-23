@@ -4,7 +4,7 @@ services:
 
   # ── Vector Database ───────────────────────────────────────
   weaviate:
-    image: semitechnologies/weaviate:1.25.1
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -39,7 +39,7 @@ services:
   # ── FastAPI Backend ───────────────────────────────────────
   backend:
     build:
-      context: ./Runtime-Terror-CS04/visual-discovery-backend
+      context: ./visual-discovery-backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -50,8 +50,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - IMAGES_DIR=/app/images
     volumes:
-      - C:/Users/hemalatha.d/Desktop/Dataset/fashion-dataset/images:/app/images:ro
-      - C:/Users/hemalatha.d/Desktop/Runtime-Terror-CS04/visual-discovery-backend:/app
+      - /Users/suryatripurari/Documents/HackathonOfficial/runtime-terror-cs04/fashion-dataset/images:/app/images:ro
+      - /Users/suryatripurari/Documents/HackathonOfficial/runtime-terror-cs04/visual-discovery-backend:/app
     depends_on:
       weaviate:
         condition: service_healthy
@@ -62,7 +62,7 @@ services:
   # ── Next.js Frontend ──────────────────────────────────────
   ui:
     build:
-      context: ./Runtime-Terror-CS04/visual-discovery-frontend
+      context: ./visual-discovery-frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"

@@ -1,7 +1,9 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from typing import Optional
+from collections import Counter
 import os
 from dotenv import load_dotenv
 
@@ -18,16 +20,39 @@ from app.models.schemas import (
     DetectedObject, Product, SwapProduct, ComplementProduct
 )
 
+
+def detect_gender_from_results(results: list) -> Optional[str]:
+    """Detect gender by majority vote from top search results."""
+    genders = [
+        r.get("gender", "")
+        for r in results
+        if r.get("gender", "").lower() not in ("unisex", "", "none")
+    ]
+    if not genders:
+        # All results are Unisex/neutral — belts, specs, watches etc.
+        print("Gender detection: neutral/unisex item, no filter applied")
+        return None
+
+    total = len(results)
+    majority_gender, majority_count = Counter(genders).most_common(1)[0]
+
+    # Only apply filter if majority is strong (>50% of results)
+    if majority_count / total < 0.5:
+        print("Gender detection: mixed results, no filter applied")
+        return None
+
+    print(f"Detected gender from results: {majority_gender} ({majority_count}/{total})")
+    return majority_gender
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load all models on startup
     print("Loading ML models...")
     get_clip_service()
     get_yolo_service()
     get_weaviate_service()
     print("All models ready.")
     yield
-    # Cleanup on shutdown
     get_weaviate_service().close()
 
 app = FastAPI(
@@ -38,13 +63,13 @@ app = FastAPI(
 )
 
 # Serve local product images
-images_dir = os.environ.get("IMAGES_DIR", r"C:\Users\hemalatha.d\Desktop\Dataset\fashion-dataset\images")
+images_dir = os.environ.get("IMAGES_DIR", "/app/images")
 if os.path.exists(images_dir):
     app.mount("/images", StaticFiles(directory=images_dir), name="images")
-    
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js frontend
+    allow_origins=["http://localhost:3001"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -56,19 +81,17 @@ def health():
 
 # ── POST /search ──────────────────────────────────────────
 @app.post("/search", response_model=SearchResponse)
-async def search(file: UploadFile = File(...)):
-    """
-    Upload an image → detect objects → embed with CLIP → search Weaviate.
-    Returns ranked matching products.
-    """
+async def search(
+    file: UploadFile = File(...),
+    gender: Optional[str] = Query(default=None, description="Override gender filter. Auto-detected if not provided.")
+):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
     image_bytes = await file.read()
 
-    # Step 1 — Object detection
-    yolo    = get_yolo_service()
-    clip    = get_clip_service()
+    yolo     = get_yolo_service()
+    clip     = get_clip_service()
     weaviate = get_weaviate_service()
 
     crops = yolo.detect_and_crop(image_bytes)
@@ -78,17 +101,24 @@ async def search(file: UploadFile = File(...)):
         for label, conf, _, bbox in crops
     ]
 
-    # Step 2 — Embed first detected object (or full image)
     _, _, primary_crop, _ = crops[0]
 
     import io
-    from PIL import Image as PILImage
     buf = io.BytesIO()
     primary_crop.save(buf, format="JPEG")
     embedding = clip.embed_image(buf.getvalue())
 
-    # Step 3 — Vector search
-    raw_products = weaviate.search(embedding, limit=6)
+    if gender:
+        effective_gender = gender
+    else:
+        # Search without filter first to detect gender from top results
+        initial_results = weaviate.search(embedding, limit=3, gender=None)
+        effective_gender = detect_gender_from_results(initial_results)
+
+    print(f"Using gender filter: {effective_gender}")
+
+    # Final search with gender filter
+    raw_products = weaviate.search(embedding, limit=6, gender=effective_gender)
 
     products = [
         Product(
@@ -112,14 +142,17 @@ async def search(file: UploadFile = File(...)):
         confidence=round(crops[0][1] * 100, 1),
     )
 
+# ── GET /styleboard/{product_id} ──────────────────────────
 @app.get("/styleboard/{product_id}")
-async def styleboard(product_id: str):
+async def styleboard(
+    product_id: str,
+    gender: Optional[str] = Query(default=None)
+):
     try:
         wv = get_weaviate_service()
         collection = wv.client.collections.get("Product")
         import weaviate.classes as wvc
 
-        # Step 1 — fetch anchor product
         results = collection.query.fetch_objects(
             filters=wvc.query.Filter.by_property("product_id").equal(product_id),
             limit=1,
@@ -128,6 +161,7 @@ async def styleboard(product_id: str):
             raise HTTPException(status_code=404, detail="Product not found")
 
         anchor_raw = results.objects[0].properties
+        effective_gender = gender or anchor_raw.get("gender")
 
         anchor = Product(
             id=str(anchor_raw.get("product_id", product_id)),
@@ -142,13 +176,12 @@ async def styleboard(product_id: str):
             promo=bool(anchor_raw.get("promo", False)),
         )
 
-        # Step 2 — fetch complements (different categories)
         anchor_category = anchor_raw.get("category", "")
         complement_categories = COMPLEMENT_MAP.get(anchor_category, ["Accessories", "Tops"])
         complements = []
 
         for cat in complement_categories[:2]:
-            items = wv.get_by_category(cat, limit=2)
+            items = wv.get_by_category(cat, limit=2, gender=effective_gender)
             for item in items:
                 complements.append(ComplementProduct(
                     id=str(item.get("product_id", "")),
@@ -159,24 +192,20 @@ async def styleboard(product_id: str):
                     reason=get_complement_reason(item, anchor_raw),
                 ))
 
-        # Step 3 — fetch swaps (same category, different product)
         from app.services.style_service import get_specific_category
         anchor_specific = get_specific_category(anchor_raw)
-        same_cat_items = wv.get_by_category(anchor_category, limit=50)
+        same_cat_items = wv.get_by_category(anchor_category, limit=50, gender=effective_gender)
         swap_candidates = [
             p for p in same_cat_items
             if str(p.get("product_id", "")) != product_id
             and get_specific_category(p) == anchor_specific
         ]
-        # Fallback if no specific matches found
         if not swap_candidates:
             swap_candidates = [
                 p for p in same_cat_items
                 if str(p.get("product_id", "")) != product_id
             ]
-        swap_candidates.sort(
-            key=lambda p: score_swap(p, anchor_raw), reverse=True
-        )
+        swap_candidates.sort(key=lambda p: score_swap(p, anchor_raw), reverse=True)
 
         swaps = [
             SwapProduct(
@@ -206,86 +235,15 @@ async def styleboard(product_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-    """
-    Given a product id → return complement items + smart swap alternatives.
-    """
-    weaviate = get_weaviate_service()
-
-    # Fetch anchor product
-    collection = weaviate.client.collections.get("Product")
-    import weaviate.classes as wvc
-    results = collection.query.fetch_objects(
-        filters=wvc.query.Filter.by_property("product_id").equal(product_id),
-        limit=1,
-    )
-    if not results.objects:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    anchor_raw = results.objects[0].properties
-    anchor = Product(
-        id=product_id,
-        name=anchor_raw["name"],
-        brand=anchor_raw["brand"],
-        price=float(anchor_raw["price"]),
-        rating=float(anchor_raw["rating"]),
-        reviews=int(anchor_raw["reviews"]),
-        category=anchor_raw["category"],
-        image_url=anchor_raw.get("image_url", ""),
-        match_score=100.0,
-        promo=bool(anchor_raw.get("promo", False)),
-    )
-
-    # Fetch complements — different categories
-    complement_categories = COMPLEMENT_MAP.get(anchor.category, ["Accessories"])
-    complements = []
-    for cat in complement_categories[:2]:
-        items = weaviate.get_by_category(cat, limit=2)
-        for item in items:
-            complements.append(ComplementProduct(
-                id=str(item.get("product_id", "")),
-                name=item["name"],
-                brand=item["brand"],
-                price=float(item["price"]),
-                image_url=item.get("image_url", ""),
-                reason=get_complement_reason(item, anchor_raw),
-            ))
-
-    # Fetch swaps — same category, scored
-    same_cat = weaviate.get_by_category(anchor.category, limit=10)
-    swap_candidates = [p for p in same_cat if p.get("product_id") != product_id]
-    swap_candidates.sort(key=lambda p: score_swap(p, anchor_raw), reverse=True)
-
-    swaps = [
-        SwapProduct(
-            id=str(p.get("product_id", "")),
-            name=p["name"],
-            brand=p["brand"],
-            price=float(p["price"]),
-            rating=float(p["rating"]),
-            image_url=p.get("image_url", ""),
-            reason=get_swap_reason(p, anchor_raw),
-            badge=get_swap_badge(p, anchor_raw),
-        )
-        for p in swap_candidates[:3]
-    ]
-
-    return StyleBoardResponse(anchor=anchor, complements=complements, swaps=swaps)
-
 # ── POST /catalog/ingest ──────────────────────────────────
 @app.post("/catalog/ingest", response_model=IngestResponse)
 async def ingest_catalog(request: IngestRequest):
-    """
-    Ingest product catalog into Weaviate.
-    Each product needs: id, name, brand, price, rating, reviews, category, image_url.
-    CLIP embeds each product image and stores the vector.
-    """
     clip     = get_clip_service()
     weaviate = get_weaviate_service()
     count    = 0
 
     for product in request.products:
         try:
-            # Embed the product image URL or use text as fallback
             image_url = product.get("image_url", "")
             if image_url:
                 import httpx
@@ -293,7 +251,6 @@ async def ingest_catalog(request: IngestRequest):
                     resp = await client.get(image_url, timeout=10)
                     embedding = clip.embed_image(resp.content)
             else:
-                # Text fallback — embed name + category
                 text = f"{product['name']} {product.get('category', '')}"
                 embedding = clip.embed_text(text)
 
@@ -312,9 +269,12 @@ def clear_catalog():
     return {"message": "Catalog cleared"}
 
 
+# ── POST /search-by-url ───────────────────────────────────
 @app.post("/search-by-url")
-async def search_by_url(payload: dict):
-    """Fetch image from URL server-side and run visual search."""
+async def search_by_url(
+    payload: dict,
+    gender: Optional[str] = Query(default=None)
+):
     import httpx
     url = payload.get("url")
     if not url:
@@ -343,7 +303,15 @@ async def search_by_url(payload: dict):
     buf = io.BytesIO()
     primary_crop.save(buf, format="JPEG")
     embedding = clip.embed_image(buf.getvalue())
-    raw_products = weaviate.search(embedding, limit=6)
+
+    if gender:
+        effective_gender = gender
+    else:
+        initial_results = weaviate.search(embedding, limit=3, gender=None)
+        effective_gender = detect_gender_from_results(initial_results)
+
+    print(f"Using gender filter: {effective_gender}")
+    raw_products = weaviate.search(embedding, limit=6, gender=effective_gender)
 
     products = [
         Product(
@@ -367,8 +335,12 @@ async def search_by_url(payload: dict):
         confidence=round(crops[0][1] * 100, 1),
     )
 
+# ── POST /search-by-text ──────────────────────────────────
 @app.post("/search-by-text")
-async def search_by_text(payload: dict):
+async def search_by_text(
+    payload: dict,
+    gender: Optional[str] = Query(default=None)
+):
     query = payload.get("query", "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="Query text required")
@@ -376,11 +348,16 @@ async def search_by_text(payload: dict):
     clip     = get_clip_service()
     weaviate = get_weaviate_service()
 
-    # Convert text to vector using CLIP
     embedding = clip.embed_text(query)
 
-    # Search Weaviate with text vector
-    raw_products = weaviate.search(embedding, limit=6)
+    if gender:
+        effective_gender = gender
+    else:
+        initial_results = weaviate.search(embedding, limit=3, gender=None)
+        effective_gender = detect_gender_from_results(initial_results)
+
+    print(f"Using gender filter: {effective_gender}")
+    raw_products = weaviate.search(embedding, limit=6, gender=effective_gender)
 
     products = [
         Product(

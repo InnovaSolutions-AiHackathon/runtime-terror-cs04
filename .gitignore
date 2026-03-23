@@ -6,3 +6,10 @@ visual-discovery-backend/fashion-dataset/
 visual-discovery-backend/.env
 *.pt
 *.log
+fashion-dataset/
+*.zip
+__pycache__/
+*.pyc
+.env
+.DS_Store
+**/.DS_Store

@@ -141,7 +141,7 @@ for i, product in enumerate(products):
         img = Image.open(product["image_path"]).convert("RGB")
 
         # Resize to speed up embedding (CLIP works well at 224x224)
-        img.thumbnail((224, 224), Image.LANCZOS)
+        img.thumbnail((512, 512), Image.LANCZOS)
 
         buf = io.BytesIO()
         img.save(buf, format="JPEG")

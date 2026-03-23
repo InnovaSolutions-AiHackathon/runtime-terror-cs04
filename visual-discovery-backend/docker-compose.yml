@@ -3,10 +3,11 @@ version: "3.9"
 services:
 
   weaviate:
-    image: semitechnologies/weaviate:1.25.1
+    image: semitechnologies/weaviate:1.27.0
     ports:
       - "8080:8080"
       - "50051:50051"
+    stop_grace_period: 5s
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
@@ -31,12 +32,20 @@ services:
     environment:
       - WEAVIATE_URL=http://weaviate:8080
       - REDIS_URL=redis://redis:6379
+      - IMAGES_DIR=/app/images                          # ← ADD THIS
     depends_on:
       - weaviate
       - redis
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     volumes:
-      - ./app:/app/app   # hot reload during dev
+      - ./app:/app/app
+      - huggingface_cache:/root/.cache/huggingface
+      - ../fashion-dataset/images:/app/images           # ← ADD THIS
 
 volumes:
   weaviate_data:
+  huggingface_cache:
