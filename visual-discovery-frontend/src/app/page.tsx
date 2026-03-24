@@ -19,10 +19,7 @@ export default function Home() {
   const [cartCount,     setCartCount]     = useState(0);
   const [prevScreen,    setPrevScreen]    = useState<Screen>("upload");
 
-  useEffect(() => {
-    localStorage.removeItem("vd_wishlist");
-    localStorage.removeItem("vd_cart");
-    localStorage.removeItem("vd_search_history");
+  useEffect(() => {    
     setWishlistCount(getWishlist().length);
     setCartCount(getCartCount());
   }, [screen]);
