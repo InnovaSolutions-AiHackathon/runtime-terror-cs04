@@ -87,3 +87,119 @@ def get_specific_category(product: dict) -> str:
     if any(w in name for w in ["jacket", "coat", "blazer"]):
         return "outerwear"
     return product.get("category", "Accessories").lower()
+
+    # ── Outfit Score ───────────────────────────────────────────
+# Add this to the bottom of style_service.py
+
+OCCASION_MAP = {
+    "formal":      ["shirt", "trouser", "blazer", "belt", "watch", "shoes"],
+    "smart_casual":["shirt", "jeans", "chino", "belt", "sneaker", "watch"],
+    "casual":      ["tshirt", "jeans", "sneaker", "bag", "cap"],
+    "ethnic":      ["kurta", "salwar", "saree", "dupatta", "sandal", "jewellery"],
+    "sporty":      ["track", "sport", "sneaker", "cap", "shorts"],
+}
+
+COLOR_HARMONY = {
+    "black":  ["white", "grey", "red", "blue", "beige"],
+    "white":  ["black", "navy", "blue", "grey", "beige"],
+    "blue":   ["white", "grey", "beige", "brown"],
+    "brown":  ["beige", "white", "olive", "cream", "tan"],
+    "grey":   ["white", "black", "blue", "maroon"],
+    "beige":  ["brown", "white", "olive", "tan"],
+    "red":    ["black", "white", "navy"],
+    "green":  ["white", "beige", "brown"],
+    "navy":   ["white", "beige", "grey", "red"],
+    "maroon": ["grey", "white", "beige"],
+}
+
+def detect_color(name: str) -> str:
+    name_lower = name.lower()
+    colors = ["black", "white", "blue", "brown", "grey", "gray", "beige",
+              "red", "green", "navy", "maroon", "yellow", "pink", "orange",
+              "purple", "tan", "cream", "olive"]
+    for c in colors:
+        if c in name_lower:
+            return c
+    return ""
+
+def detect_occasion(name: str, category: str) -> str:
+    name_lower = (name + " " + category).lower()
+    for occasion, keywords in OCCASION_MAP.items():
+        if any(k in name_lower for k in keywords):
+            return occasion
+    return "casual"
+
+def score_outfit(anchor: dict, complements: list) -> dict:
+    """
+    Score an outfit out of 10.
+    - Anchor alone starts at a reasonable base score
+    - Each complement added always increases the score
+    - Max score 10.0
+    """
+    feedback = []
+    all_items = [anchor] + complements
+
+    # ── Base score — anchor alone gets 6.0 ────────────────
+    base_score = 6.0
+
+    # ── Occasion detection ─────────────────────────────────
+    occasions = [detect_occasion(item.get("name", ""), item.get("category", "")) for item in all_items]
+    occasion_counts = {}
+    for o in occasions:
+        occasion_counts[o] = occasion_counts.get(o, 0) + 1
+    dominant_occasion = max(occasion_counts, key=occasion_counts.get)
+
+    occasion_labels = {
+        "formal":       "Formal",
+        "smart_casual": "Smart Casual",
+        "casual":       "Casual",
+        "ethnic":       "Ethnic / Traditional",
+        "sporty":       "Sporty / Active",
+    }
+    feedback.append(f"✅ Occasion: {occasion_labels.get(dominant_occasion, 'Casual')}")
+
+    # ── Complement bonus — each item adds +0.5 ────────────
+    complement_bonus = 0.0
+    if len(complements) == 0:
+        feedback.append("💡 Add complementary items to improve your score")
+    else:
+        complement_bonus = min(len(complements) * 0.5, 2.5)
+        feedback.append(f"✅ {len(complements)} complementary item{'s' if len(complements) > 1 else ''} added")
+
+    # ── Color harmony bonus — extra +0.5 if colors match ──
+    color_bonus = 0.0
+    colors = [detect_color(item.get("name", "")) for item in all_items]
+    colors = [c for c in colors if c]
+    if len(colors) >= 2:
+        harmony_count = sum(
+            1 for i in range(len(colors))
+            for j in range(i + 1, len(colors))
+            if colors[j] in COLOR_HARMONY.get(colors[i], []) or colors[i] == colors[j]
+        )
+        pairs = len(colors) * (len(colors) - 1) / 2
+        ratio = harmony_count / pairs if pairs > 0 else 0
+        if ratio >= 0.5:
+            color_bonus = 0.5
+            feedback.append("✅ Colors complement each other beautifully")
+        else:
+            feedback.append("💡 Consider more harmonious color combinations")
+
+    # ── Complete outfit bonus — +0.5 for 3+ items ─────────
+    complete_bonus = 0.0
+    if len(all_items) >= 3:
+        complete_bonus = 0.5
+        feedback.append("✅ Complete outfit — great styling!")
+    elif len(all_items) == 2:
+        feedback.append("💡 Add one more item for a complete look")
+
+    # ── Final score ────────────────────────────────────────
+    total = min(round(base_score + complement_bonus + color_bonus + complete_bonus, 1), 10.0)
+    grade = "Excellent" if total >= 8.5 else "Great" if total >= 7.5 else "Good" if total >= 6.5 else "Fair"
+
+    return {
+        "total":    total,
+        "out_of":   10,
+        "feedback": feedback,
+        "occasion": occasion_labels.get(dominant_occasion, "Casual"),
+        "grade":    grade,
+    }

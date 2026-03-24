@@ -210,7 +210,7 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
             transition: "background 0.2s",
           }}
         >
-          {loading ? "Searching..." : mode === "text" ? "Search by Description →" : "Search by Photo →"}
+          {loading ? "Searching..." : mode === "text" ? "Search by Description →" : mode === "url" ? "Search by URL →" : "Search by Photo →"}
         </button>
 
         <button onClick={() => onSearch(undefined)} style={{
@@ -229,9 +229,23 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
                 <button
                   key={h.id}
                   onClick={() => {
-                    if (h.type === "text") { setMode("text"); setTextQuery(h.query); }
-                    else if (h.type === "url") { setMode("url"); setUrl(h.query); }
-                    else if (h.preview) { setMode("upload"); setPreview(h.preview); }
+                    if (h.type === "text") {
+                      setMode("text");
+                      setTextQuery(h.query);
+                    } else if (h.type === "url") {
+                      setMode("url");
+                      setUrl(h.query);
+                    } else if (h.preview) {
+                      setMode("upload");
+                      setPreview(h.preview);
+                      // Convert base64 preview back to File object
+                      fetch(h.preview)
+                        .then(res => res.blob())
+                        .then(blob => {
+                          const f = new File([blob], h.query || "image.jpg", { type: blob.type || "image/jpeg" });
+                          setFile(f);
+                        });
+                    }
                   }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,

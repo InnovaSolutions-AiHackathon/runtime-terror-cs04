@@ -20,10 +20,13 @@ Traditional ecommerce search is **keyword-based** — users must describe what t
 - 💬 **Text Search** — describe what you want in words (e.g. "brown leather belt", "green salwar")
 - 🕐 **Search History** — last 5 searches saved, re-search with one tap
 - ❤️ **Wishlist** — save favourite products, view and manage anytime
-- 🎯 **Object Detection** — identifies multiple items in one photo
-- 🔍 **Visual Search** — finds products by visual similarity, not keywords
-- 🧩 **Complete the Look** — suggests complementary items to build a full outfit
-- 🔄 **Smart Swaps** — finds better-priced or higher-rated alternatives with same style
+- 🛒 **Add to Cart** — add products with quantity control and order summary
+- 🎯 **Smart Filters** — filter by price range, rating, category
+- 📊 **Sort Results** — sort by match %, price, or rating
+- 🧩 **Complete the Look** — suggests complementary items by gender and style
+- 🔄 **Smart Swaps** — finds better-priced or higher-rated alternatives
+- ⭐ **Outfit Score** — AI scores your outfit out of 10 with style feedback
+- 🎨 **Color Coded Match** — green/amber/red match percentage badges
 - ⚡ **44,000 Products** — real fashion catalog with AI-powered embeddings
 - 🐳 **100% Local** — runs entirely in Docker, zero cloud cost
 
@@ -32,20 +35,22 @@ Traditional ecommerce search is **keyword-based** — users must describe what t
 ## 🏗️ Architecture
 
 ```
-User uploads photo
-      ↓
+User uploads photo / types description
+        ↓
 Next.js Frontend (port 3000)
-      ↓ POST /search
+        ↓ POST /search or /search-by-text
 FastAPI Backend (port 8000)
-      ↓
-YOLO v8 ──────────────── detects & crops objects
-      ↓
-CLIP ViT-B/32 ─────────── converts image to 512-dim vector
-      ↓
-Weaviate (port 8080) ──── finds nearest neighbor products
-      ↓
-Style Engine ──────────── complements + smart swaps
-      ↓
+        ↓
+YOLO v8 ──────── detects & crops objects
+        ↓
+CLIP ViT-B/32 ── converts image/text to 512-dim vector
+        ↓
+Weaviate ──────── finds nearest neighbor products (HNSW)
+        ↓
+Style Engine ──── gender-aware complements + smart swaps
+        ↓
+Outfit Score ──── rates outfit out of 10
+        ↓
 Results displayed in UI
 ```
 
@@ -55,7 +60,8 @@ Results displayed in UI
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14, React, Tailwind CSS |
+| Frontend | Next.js 14, React, TypeScript |
+| Styling | Inline styles (no CSS framework dependency) |
 | Backend | FastAPI, Python 3.11 |
 | Object Detection | YOLOv8 nano (Ultralytics) |
 | Image Embedding | CLIP ViT-B/32 (OpenCLIP) |
@@ -64,83 +70,7 @@ Results displayed in UI
 | Cache | Redis 7 |
 | Dataset | Kaggle Fashion Product Images (44k) |
 | Container | Docker + Docker Compose |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Docker Desktop
-- Python 3.11
-- Node.js 20 LTS
-- 16GB RAM
-- 40GB free disk space
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/YOUR_USERNAME/visual-discovery.git
-cd visual-discovery
-```
-
-### 2. Download the dataset
-```bash
-pip install kaggle
-kaggle datasets download -d paramaggarwal/fashion-product-images-small
-```
-
-### 3. Start backend services
-```bash
-docker compose up -d
-```
-
-### 4. Start frontend
-```bash
-cd visual-discovery-frontend
-npm install
-npm run dev
-```
-
-### 5. Ingest the catalog (first time only)
-```bash
-cd visual-discovery-backend
-python ingest_kaggle.py --zip "/path/to/fashion-product-images-small.zip"
-```
-
-### 5. Open the app
-```
-http://localhost:3000
-```
-
----
-
-## 📁 Project Structure
-
-```
-visual-discovery/                  ← Next.js Frontend
-├── src/app/
-│   ├── page.tsx                   ← App shell
-│   ├── components/
-│   │   ├── UploadScreen.tsx       ← Photo upload
-│   │   ├── ResultsScreen.tsx      ← Search results
-│   │   ├── StyleBoardScreen.tsx   ← Outfit builder
-│   │   └── shared.tsx             ← UI components
-│   └── globals.css
-└── src/lib/
-    └── mockData.ts                ← API calls
-
-visual-discovery-backend/          ← FastAPI Backend
-├── app/
-│   ├── main.py                    ← API routes
-│   ├── services/
-│   │   ├── clip_service.py        ← Image embedding
-│   │   ├── yolo_service.py        ← Object detection
-│   │   ├── weaviate_service.py    ← Vector search
-│   │   └── style_service.py       ← Style recommendations
-│   └── models/schemas.py          ← Data models
-├── ingest_kaggle.py               ← Dataset ingestion
-├── docker-compose.yml             ← All services
-└── Dockerfile                     ← Backend container
-```
+| Storage | Browser localStorage (cart, wishlist, history) |
 
 ---
 
@@ -152,11 +82,12 @@ visual-discovery-backend/          ← FastAPI Backend
 | POST | `/search` | Visual search by image upload |
 | POST | `/search-by-url` | Visual search by image URL |
 | POST | `/search-by-text` | Search by text description (CLIP multimodal) |
-| GET | `/styleboard/{id}` | Get complements + smart swaps |
+| GET | `/styleboard/{id}` | Get gender-aware complements + smart swaps |
+| POST | `/outfit-score` | Score an outfit out of 10 |
 | POST | `/catalog/ingest` | Ingest product catalog |
 | DELETE | `/catalog/clear` | Clear catalog |
 
-API docs available at: `http://localhost:8000/docs`
+API docs: `http://localhost:8000/docs`
 
 ---
 
@@ -165,12 +96,12 @@ API docs available at: `http://localhost:8000/docs`
 ### Visual Search Pipeline
 1. **YOLO** detects and crops individual objects from the uploaded photo
 2. **CLIP** converts each cropped image into a 512-dimensional vector
-3. **Weaviate** finds the nearest neighbor vectors using HNSW algorithm
+3. **Weaviate** finds nearest neighbor vectors using HNSW algorithm
 4. Results ranked by cosine similarity score
 
 ### Text Search Pipeline
 1. User types a description (e.g. "brown leather belt")
-2. **CLIP** converts the text into a 512-dimensional vector
+2. **CLIP** converts text into a 512-dimensional vector
 3. **Weaviate** finds products whose image vectors are closest to the text vector
 4. Returns visually matching products — no keywords needed
 
@@ -179,15 +110,100 @@ API docs available at: `http://localhost:8000/docs`
 score = (price_saving × 0.4) + (rating/5.0 × 0.4) + (promo_active × 0.2)
 ```
 
-### Style Affinity
-Category-based complement mapping ensures relevant outfit suggestions:
-- Apparel → Footwear + Accessories
-- Footwear → Bottomwear + Accessories
-- Accessories → Apparel + Footwear
+### Gender-Aware Complements
+- Detects gender from product name (women/men/girl/boy)
+- Filters both complements and swaps to match gender
+- Falls back to unfiltered results if no gender-specific items found
 
-### Wishlist & Search History
-- Wishlist stored in browser localStorage — persists across sessions
-- Search history saves last 5 searches (text, image, URL) for quick re-search
+### Outfit Score (out of 10)
+- **Color Harmony** (0-3pts) — checks color compatibility between items
+- **Occasion Match** (0-3pts) — formal, smart casual, casual, ethnic, sporty
+- **Category Coverage** (0-2pts) — variety of item types
+- **Price Consistency** (0-2pts) — similar price range across items
+
+### Wishlist & Cart
+- Both stored in browser localStorage — persist across sessions
+- Cart supports quantity control and order total calculation
+- Free shipping threshold at $100
+
+---
+
+## 📁 Project Structure
+
+```
+Runtime-Terror-CS04/
+├── README.md
+├── docker-compose.yml
+├── visual-discovery-backend/     ← FastAPI + ML
+│   ├── app/
+│   │   ├── main.py               ← API routes
+│   │   ├── services/
+│   │   │   ├── clip_service.py   ← Image/text embedding
+│   │   │   ├── yolo_service.py   ← Object detection
+│   │   │   ├── weaviate_service.py ← Vector search
+│   │   │   └── style_service.py  ← Swaps, complements, outfit score
+│   │   └── models/schemas.py     ← Data models
+│   ├── ingest_kaggle.py          ← Dataset ingestion
+│   ├── Dockerfile
+│   └── requirements.txt
+└── visual-discovery-frontend/    ← Next.js UI
+    ├── src/app/
+    │   ├── page.tsx              ← App shell
+    │   ├── components/
+    │   │   ├── UploadScreen.tsx  ← Photo/text/URL upload
+    │   │   ├── ResultsScreen.tsx ← Search results + sort/filter
+    │   │   ├── StyleBoardScreen.tsx ← Outfit builder + score
+    │   │   ├── WishlistScreen.tsx ← Saved items
+    │   │   ├── CartScreen.tsx    ← Shopping cart
+    │   │   └── shared.tsx        ← UI components
+    │   └── globals.css
+    └── src/lib/
+        ├── mockData.ts           ← API calls
+        └── wishlist.ts           ← Cart, wishlist, history
+
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker Desktop
+- Python 3.11
+- Node.js 20 LTS
+
+### 1. Clone the repo
+```bash
+git clone https://github.com/InnovaSolutions-AiHackathon/runtime-terror-cs04.git
+cd runtime-terror-cs04
+```
+
+### 2. Start backend services
+```bash
+docker compose up -d
+```
+
+### 3. Start frontend
+```bash
+cd visual-discovery-frontend
+npm install
+npm run dev
+```
+
+### 4. Ingest the catalog (first time only)
+```bash
+# Download Kaggle dataset first
+pip install kaggle
+kaggle datasets download -d paramaggarwal/fashion-product-images-small
+
+cd visual-discovery-backend
+python ingest_kaggle.py --zip "/path/to/fashion-product-images-small.zip"
+```
+
+### 5. Open the app
+```
+http://localhost:3000
+```
 
 ---
 
@@ -199,8 +215,18 @@ Category-based complement mapping ensures relevant outfit suggestions:
 | Search latency (CPU) | ~2-4 seconds |
 | Search latency (GPU) | ~300ms |
 | CLIP embedding dim | 512 |
-| YOLO model size | 6MB |
 | Match accuracy | 85-90% category correct |
+
+---
+
+## 🔮 Future Enhancements
+
+1. **FashionSigLIP** — upgrade to fashion-specific embedding model for 20% better accuracy
+2. **Live Camera Search** — point camera at any product for instant search
+3. **GNN Recommendations** — graph neural network trained on real purchase data
+4. **Virtual Try-On** — AR overlay using ControlNet
+5. **Multimodal Search** — combine image + text ("find this but in blue")
+6. **Production Deploy** — Vercel (frontend) + AWS GPU instance (backend) + Weaviate Cloud
 
 ---
 

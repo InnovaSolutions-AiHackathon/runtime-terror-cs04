@@ -70,7 +70,7 @@ class WeaviateService:
             products.append(p)
         return products
 
-    def get_by_category(self, category: str, limit: int = 10, offset: int = 0) -> List[dict]:
+    def get_by_category(self, category: str, limit: int = 50, offset: int = 0) -> List[dict]:
         """Fetch products by category with random offset for variety."""
         import random
         collection = self.client.collections.get(COLLECTION_NAME)
