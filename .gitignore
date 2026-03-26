@@ -6,3 +6,7 @@ visual-discovery-backend/fashion-dataset/
 visual-discovery-backend/.env
 *.pt
 *.log
+.venv/
+.claude/
+.config/
+ai_sdlc_metrics_logs/
