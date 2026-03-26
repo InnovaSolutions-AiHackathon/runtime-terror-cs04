@@ -35,6 +35,7 @@ export type StyleBoardResult = {
     price: number;
     image_url: string;
     reason: string;
+    category: string;
   }[];
   swaps: {
     id: string;
@@ -45,6 +46,7 @@ export type StyleBoardResult = {
     image_url: string;
     reason: string;
     badge: string;
+    category: string;
   }[];
 };
 

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { getWishlist, removeFromWishlist, WishlistItem } from "@/lib/wishlist";
-import { StarRating, Badge, BackButton } from "./shared";
+import { StarRating, Badge, BackButton, extractBrand } from "./shared";
 
 export default function WishlistScreen({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<WishlistItem[]>([]);
@@ -62,7 +62,7 @@ export default function WishlistScreen({ onBack }: { onBack: () => void }) {
 
                 {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>{item.brand}</p>
+                  <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>{extractBrand(item.name) || item.category}</p>
                   <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937", marginBottom: 4, lineHeight: 1.3 }}>{item.name}</p>
                   <StarRating rating={item.rating} />
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>

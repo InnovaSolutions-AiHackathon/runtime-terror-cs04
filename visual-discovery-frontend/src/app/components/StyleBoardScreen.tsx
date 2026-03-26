@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { MOCK_COMPLEMENTS, MOCK_SWAPS, MOCK_PRODUCTS, getStyleBoard, StyleBoardResult } from "@/lib/mockData";
 import { Badge, BackButton } from "./shared";
 import { addToCart, isInCart, getCartCount } from "@/lib/wishlist";
-
+import { extractBrand } from "./shared";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type Product = typeof MOCK_PRODUCTS[0];
@@ -122,7 +122,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
   // Add anchor to cart
   const handleAddAnchor = () => {
     addToCart({
-      id: item.id, name: item.name, brand: item.brand,
+      id: item.id, name: item.name, brand: extractBrand(item.name) || item.category,
       price: item.price, image_url: item.image_url, category: item.category,
     });
     setAnchorInCart(true);
@@ -132,7 +132,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
   // Add individual complement to cart
   const handleAddComplement = (comp: any) => {
     addToCart({
-      id: comp.id, name: comp.name, brand: comp.brand,
+      id: comp.id, name: comp.name, brand: extractBrand(comp.name) || comp.category,
       price: comp.price, image_url: comp.image_url, category: comp.category || "",
     });
     setCartCount(getCartCount());
@@ -141,13 +141,13 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
   // Add entire outfit to cart at once
   const handleAddEntireOutfit = () => {
     addToCart({
-      id: item.id, name: item.name, brand: item.brand,
+      id: item.id, name: item.name, brand: extractBrand(item.name) || item.category,
       price: item.price, image_url: item.image_url, category: item.category,
     });
     setAnchorInCart(true);
     outfitItems.forEach(comp => {
       addToCart({
-        id: comp.id, name: comp.name, brand: comp.brand,
+        id: comp.id, name: comp.name, brand: extractBrand(comp.name) || comp.category,
         price: comp.price, image_url: comp.image_url, category: comp.category || "",
       });
     });
@@ -158,7 +158,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
   // Swap anchor item
   const handleSwapClick = (swap: typeof swaps[0]) => {
     setAnchorItem({
-      id: swap.id, name: swap.name, brand: swap.brand,
+      id: swap.id, name: swap.name, brand: extractBrand(swap.name) || swap.category,
       price: swap.price, rating: swap.rating, reviews: 0,
       category: anchorItem.category, image_url: swap.image_url,
       match_score: 100, promo: false,
@@ -194,7 +194,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Your anchor item</p>
               <p style={{ fontSize: 15, fontWeight: 700, color: "#1e1b4b", marginBottom: 2 }}>{item.name}</p>
-              <p style={{ fontSize: 13, color: "#6d28d9" }}>{item.brand} · ${item.price}</p>
+              <p style={{ fontSize: 13, color: "#6d28d9" }}>{extractBrand(item.name) || item.category} · ${item.price}</p>
             </div>
           </div>
           {/* Add anchor to cart button */}
@@ -267,7 +267,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
                       onClick={() => toggleOutfitItem(p)}>
                       <ProductImage url={p.image_url} size={50} />
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 11, color: "#9ca3af" }}>{p.brand}</p>
+                        <p style={{ fontSize: 11, color: "#9ca3af" }}>{extractBrand(p.name) || p.category}</p>
                         <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>{p.name}</p>
                         <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{p.reason}</p>
                       </div>
@@ -320,7 +320,7 @@ export default function StyleBoardScreen({ anchor, onBack }: { anchor: Product |
                 >
                   <ProductImage url={p.image_url} size={50} />
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 11, color: "#9ca3af" }}>{p.brand}</p>
+                    <p style={{ fontSize: 11, color: "#9ca3af" }}>{extractBrand(p.name) || p.category}</p>
                     <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>{p.name}</p>
                     <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{p.reason}</p>
                   </div>

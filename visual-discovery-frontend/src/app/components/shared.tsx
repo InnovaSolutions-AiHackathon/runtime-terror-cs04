@@ -47,3 +47,17 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" }) {
     </div>
   );
 }
+
+export function extractBrand(name: string): string {
+  if (!name) return "";
+  const genderWords = ["women", "men", "boys", "girls", "unisex"];
+  const nameLower = name.toLowerCase();
+  for (const g of genderWords) {
+    const idx = nameLower.indexOf(g);
+    if (idx > 0) {
+      const brand = name.substring(0, idx).trim();
+      if (brand) return brand;
+    }
+  }
+  return name.split(" ")[0];
+}

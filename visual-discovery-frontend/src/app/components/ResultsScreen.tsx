@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MOCK_PRODUCTS, SearchResult } from "@/lib/mockData";
 import { StarRating, Badge, BackButton, Logo } from "./shared";
 import { addToWishlist, removeFromWishlist, isInWishlist } from "@/lib/wishlist";
+import { extractBrand } from "./shared";
 
 type Product = typeof MOCK_PRODUCTS[0];
 type SortOption = "match" | "price_asc" | "price_desc" | "rating";
@@ -20,7 +21,7 @@ function ProductCard({ p, selected, onSelect }: { p: Product; selected: boolean;
       removeFromWishlist(p.id);
     } else {
       addToWishlist({
-        id: p.id, name: p.name, brand: p.brand,
+        id: p.id, name: p.name, brand: extractBrand(p.name) || p.category,
         price: p.price, rating: p.rating,
         image_url: p.image_url, category: p.category,
         match_score: p.match_score, promo: p.promo,
@@ -66,7 +67,7 @@ function ProductCard({ p, selected, onSelect }: { p: Product; selected: boolean;
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
         }}>♥</button>
       </div>
-      <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>{p.brand}</p>
+      <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>{extractBrand(p.name) || p.category}</p>
       <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937", marginBottom: 6, lineHeight: 1.3 }}>{p.name}</p>
       <StarRating rating={p.rating} />
       <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 8, marginTop: 2 }}>{p.reviews.toLocaleString()} reviews</p>
@@ -246,7 +247,7 @@ export default function ResultsScreen({
           <div style={{ fontSize: 24 }}>🛍️</div>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>{selected.name}</p>
-            <p style={{ fontSize: 12, color: "#9ca3af" }}>{selected.brand} · ${selected.price}</p>
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>{extractBrand(selected.name) || selected.category} · ${selected.price}</p>
           </div>
           <button onClick={() => onComplete(selected)} style={{
             padding: "10px 20px", background: "#7c3aed", color: "#fff",
