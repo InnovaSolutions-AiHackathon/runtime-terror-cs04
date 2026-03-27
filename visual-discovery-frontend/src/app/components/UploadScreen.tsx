@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Logo } from "./shared";
 import { searchByImage, searchByUrl, SearchResult } from "@/lib/mockData";
 import { getSearchHistory, addToHistory, SearchHistoryItem } from "@/lib/wishlist";
-
+import Footer from "./Footer";  
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchResult) => void }) {
@@ -213,12 +213,12 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
           {loading ? "Searching..." : mode === "text" ? "Search by Description →" : mode === "url" ? "Search by URL →" : "Search by Photo →"}
         </button>
 
-        <button onClick={() => onSearch(undefined)} style={{
+        {/* <button onClick={() => onSearch(undefined)} style={{
           marginTop: 12, background: "none", border: "none",
           color: "#9ca3af", fontSize: 12, cursor: "pointer", textDecoration: "underline",
         }}>
           Skip — use demo data
-        </button>
+        </button> */}
         {history.length > 0 && (
           <div style={{ width: "100%", maxWidth: 500, marginTop: 24 }}>
             <p style={{ fontSize: 12, fontWeight: 500, color: "#9ca3af", marginBottom: 10 }}>
@@ -284,6 +284,7 @@ export default function UploadScreen({ onSearch }: { onSearch: (result?: SearchR
             </div>
           </div>
         )}
+        <Footer />
       </main>
     </div>
   );

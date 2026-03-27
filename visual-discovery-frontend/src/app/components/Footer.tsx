@@ -9,11 +9,11 @@ export default function Footer() {
       gap: 8,
       background: "#fff",
     }}>
-      <span style={{ fontSize: 12, color: "#9ca3af" }}>Built with</span>
-      <span style={{ fontSize: 14 }}>⚡</span>
+      <span style={{ fontSize: 12, color: "#9ca3af" }}>Built by team </span>
+      <span style={{ fontSize: 12, color: "#d1d5db" }}>·</span>
       <span style={{ fontSize: 13, fontWeight: 600, color: "#7c3aed" }}>Runtime Terror</span>
       <span style={{ fontSize: 12, color: "#d1d5db" }}>·</span>
-      <span style={{ fontSize: 12, color: "#9ca3af" }}>Visual Discovery 2025</span>
+      <span style={{ fontSize: 12, color: "#9ca3af" }}>AI Hackathon 2026</span>
     </footer>
   );
 }
