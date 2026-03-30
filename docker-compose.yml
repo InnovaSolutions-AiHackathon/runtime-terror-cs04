@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   # ── Vector Database ───────────────────────────────────────
@@ -39,7 +37,7 @@ services:
   # ── FastAPI Backend ───────────────────────────────────────
   backend:
     build:
-      context: ./Runtime-Terror-CS04/visual-discovery-backend
+      context: ./visual-discovery-backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -50,19 +48,25 @@ services:
       - REDIS_URL=redis://redis:6379
       - IMAGES_DIR=/app/images
     volumes:
-      - C:/Users/hemalatha.d/Desktop/Dataset/fashion-dataset/images:/app/images:ro
-      - C:/Users/hemalatha.d/Desktop/Runtime-Terror-CS04/visual-discovery-backend:/app
+      # Mount images from local dataset folder
+      # Set DATASET_PATH env var or place images in ./fashion-images/
+      - ${DATASET_PATH:-./fashion-images}:/app/images:ro
+      - ./visual-discovery-backend:/app
     depends_on:
       weaviate:
         condition: service_healthy
       redis:
         condition: service_healthy
+    command: >
+      sh -c "pip uninstall opencv-python -y || true &&
+             pip install opencv-python-headless --no-deps &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
     restart: unless-stopped
 
   # ── Next.js Frontend ──────────────────────────────────────
   ui:
     build:
-      context: ./Runtime-Terror-CS04/visual-discovery-frontend
+      context: ./visual-discovery-frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
@@ -75,3 +79,4 @@ services:
 
 volumes:
   weaviate_data:
+    name: visual-discovery-weaviate-data
