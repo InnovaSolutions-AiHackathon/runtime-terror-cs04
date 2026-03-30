@@ -103,7 +103,7 @@ npm run dev
 ### 5. Ingest the catalog (first time only)
 ```bash
 cd visual-discovery-backend
-python ingest_kaggle.py --zip "/path/to/fashion-product-images-small.zip"
+python kaggle_ingest.py --zip "/path/to/fashion-product-images-small.zip"
 ```
 
 ### 5. Open the app
@@ -137,7 +137,7 @@ visual-discovery-backend/          ← FastAPI Backend
 │   │   ├── weaviate_service.py    ← Vector search
 │   │   └── style_service.py       ← Style recommendations
 │   └── models/schemas.py          ← Data models
-├── ingest_kaggle.py               ← Dataset ingestion
+├── kaggle_ingest.py               ← Dataset ingestion
 ├── docker-compose.yml             ← All services
 └── Dockerfile                     ← Backend container
 ```

@@ -143,7 +143,7 @@ Runtime-Terror-CS04/
 │   │   │   ├── weaviate_service.py ← Vector search
 │   │   │   └── style_service.py  ← Swaps, complements, outfit score
 │   │   └── models/schemas.py     ← Data models
-│   ├── ingest_kaggle.py          ← Dataset ingestion
+│   ├── kaggle_ingest.py          ← Dataset ingestion
 │   ├── Dockerfile
 │   └── requirements.txt
 └── visual-discovery-frontend/    ← Next.js UI
@@ -197,7 +197,7 @@ pip install kaggle
 kaggle datasets download -d paramaggarwal/fashion-product-images-small
 
 cd visual-discovery-backend
-python ingest_kaggle.py --zip "/path/to/fashion-product-images-small.zip"
+python kaggle_ingest.py --zip "/path/to/fashion-product-images-small.zip"
 ```
 
 ### 5. Open the app
